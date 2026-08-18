@@ -3,369 +3,349 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CANNIBAL: The Optimized Vigilante - 3D Tactical Interface</title>
-<!-- Three.js CDN for 3D Graphics -->
+<title>CANNIBAL: The Optimized Vigilante - Complete 40-Chapter Motion Comic</title>
+<!-- Three.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
   :root {
-    --bg-main: #05070a;
-    --panel-bg: rgba(14, 18, 26, 0.88);
-    --border-cyan: #00f0ff;
+    --bg-dark: #05070a;
+    --card-bg: rgba(12, 16, 23, 0.94);
     --border-red: #ff2a2a;
-    --text-glow-cyan: 0 0 10px rgba(0, 240, 255, 0.7);
-    --text-glow-red: 0 0 10px rgba(255, 42, 42, 0.7);
+    --border-cyan: #00f0ff;
+    --accent-red: #ff2a2a;
+    --accent-cyan: #00f0ff;
+    --accent-gold: #ffb703;
+    --font-comic: 'Impact', 'Arial Black', sans-serif;
     --font-mono: 'Courier New', Courier, monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background-color: var(--bg-main);
-    color: #fff;
-    font-family: var(--font-sans);
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
-  /* 3D Canvas Background */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg-dark);
+    color: #e8ecf2;
+    font-family: var(--font-body);
+    overflow-x: hidden;
+    line-height: 1.65;
+  }
+
   #webgl-canvas {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
+    pointer-events: none;
     z-index: 1;
   }
 
-  /* Scanline & CRT Vignette Overlay */
   .crt-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.85) 100%),
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
     background-size: 100% 100%, 100% 4px;
     z-index: 2;
     pointer-events: none;
   }
 
-  /* Main HUD App Framework */
-  #app-wrapper {
-    position: relative;
-    z-index: 3;
-    width: 94vw;
-    max-width: 1100px;
-    height: 90vh;
-    display: grid;
-    grid-template-rows: 55px 1fr 140px;
-    background: var(--panel-bg);
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 240, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
   header {
-    background: rgba(5, 8, 14, 0.95);
-    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 56px;
+    background: rgba(5, 8, 13, 0.96);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.25);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 20px;
+    z-index: 100;
+    backdrop-filter: blur(10px);
     font-family: var(--font-mono);
     font-size: 0.85rem;
-    letter-spacing: 1.5px;
   }
-  .hud-tag {
-    padding: 4px 10px;
+
+  .progress-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+  }
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-red);
+    box-shadow: 0 0 12px var(--accent-red);
+    transition: width 0.1s linear;
+  }
+
+  .hud-btn {
+    background: transparent;
+    border: 1px solid var(--border-cyan);
+    color: var(--accent-cyan);
+    padding: 5px 12px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
     border-radius: 2px;
-    font-weight: bold;
+    transition: all 0.2s;
   }
-  .tag-red { color: var(--border-red); border: 1px solid var(--border-red); text-shadow: var(--text-glow-red); }
-  .tag-cyan { color: var(--border-cyan); border: 1px solid var(--border-cyan); text-shadow: var(--text-glow-cyan); }
+  .hud-btn:hover {
+    background: var(--accent-cyan);
+    color: #000;
+    box-shadow: 0 0 10px var(--accent-cyan);
+  }
 
-  /* Interactive Stage Area */
-  .center-stage {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 20px;
+  /* Quick-Jump Index Drawer */
+  #toc-drawer {
+    position: fixed;
+    top: 56px;
+    right: -320px;
+    width: 300px;
+    height: calc(100vh - 56px);
+    background: rgba(8, 12, 18, 0.98);
+    border-left: 1px solid var(--border-cyan);
+    z-index: 99;
     padding: 20px;
-    overflow: hidden;
-  }
-
-  /* Avatar / Tactical Wireframe Viewport */
-  .tactical-sidebar {
-    background: rgba(8, 12, 18, 0.85);
-    border: 1px solid rgba(0, 240, 255, 0.2);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-  }
-  .target-frame {
-    height: 180px;
-    border: 1px dashed rgba(255, 42, 42, 0.4);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 42, 42, 0.03);
-    position: relative;
-  }
-  .target-avatar-icon {
-    font-size: 3.5rem;
-    filter: drop-shadow(0 0 10px rgba(255, 42, 42, 0.8));
-    animation: floatAnim 3s infinite ease-in-out;
-  }
-  @keyframes floatAnim {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
-  .stats-block {
-    margin-top: 10px;
-    font-size: 0.78rem;
-    line-height: 1.6;
-    color: #a0b2c6;
-  }
-  .bar-wrapper { margin: 6px 0; }
-  .bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; }
-  .bar-track { height: 8px; background: #16202c; border-radius: 1px; overflow: hidden; margin-top: 2px; }
-  .bar-fill { height: 100%; transition: width 0.4s ease; }
-  .fill-hp { width: 100%; background: #00e676; box-shadow: 0 0 8px #00e676; }
-  .fill-threat { width: 45%; background: var(--border-red); box-shadow: 0 0 8px var(--border-red); }
-
-  /* Narrative & Terminal Stage */
-  .narrative-viewport {
-    background: rgba(4, 7, 12, 0.75);
-    border: 1px solid rgba(0, 240, 255, 0.15);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
     overflow-y: auto;
-  }
-  .chapter-title {
+    transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     font-family: var(--font-mono);
-    font-size: 1.25rem;
-    color: var(--border-red);
-    text-shadow: var(--text-glow-red);
+    font-size: 0.78rem;
+  }
+  #toc-drawer.open { right: 0; }
+  .toc-item {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: #8c9ba5;
+    cursor: pointer;
+  }
+  .toc-item:hover { color: var(--accent-cyan); }
+
+  /* Motion Comic Container */
+  .comic-stream {
+    position: relative;
+    z-index: 10;
+    max-width: 820px;
+    margin: 80px auto 120px auto;
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 70px;
+  }
+
+  .panel {
+    background: var(--card-bg);
+    border: 2px solid #1c2432;
+    border-radius: 6px;
+    padding: 30px 26px;
+    position: relative;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.85);
+    opacity: 0.15;
+    transform: translateY(50px) scale(0.98);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .panel.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    border-color: rgba(0, 240, 255, 0.35);
+  }
+  .panel.danger {
+    border-left: 6px solid var(--accent-red);
+  }
+  .panel.danger.visible {
+    box-shadow: 0 0 35px rgba(255, 42, 42, 0.22), 0 15px 40px rgba(0,0,0,0.85);
+  }
+
+  .act-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--accent-cyan);
+    border: 1px solid var(--border-cyan);
+    padding: 3px 8px;
+    margin-bottom: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .chapter-heading {
+    font-family: var(--font-comic);
+    font-size: 1.75rem;
+    color: #fff;
+    letter-spacing: 1px;
     text-transform: uppercase;
     margin-bottom: 4px;
   }
-  .chapter-loc {
+  .location-tag {
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: var(--border-cyan);
+    color: var(--accent-gold);
     letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  .sfx-word {
+    font-family: var(--font-comic);
+    font-size: 2.2rem;
+    color: var(--accent-red);
+    text-shadow: 2px 2px 0px #000, 0 0 15px var(--accent-red);
+    display: inline-block;
+    transform: rotate(-3deg);
+    margin: 10px 0;
+    letter-spacing: 2px;
+  }
+
+  .prose {
+    font-size: 1.02rem;
+    color: #d1dbe5;
     margin-bottom: 14px;
   }
-  .terminal-text {
-    font-size: 0.96rem;
-    line-height: 1.7;
-    color: #d1dbe5;
-    background: rgba(0,0,0,0.3);
-    padding: 16px;
-    border-left: 3px solid var(--border-red);
-    min-height: 140px;
-  }
 
-  /* Control Panel / Actions */
-  footer {
-    background: rgba(6, 10, 16, 0.95);
-    border-top: 1px solid rgba(0, 240, 255, 0.2);
-    padding: 16px 24px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    align-items: center;
-  }
-  button.action-btn {
-    background: linear-gradient(135deg, rgba(16, 25, 38, 0.9) 0%, rgba(8, 14, 22, 0.9) 100%);
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    color: #fff;
-    padding: 14px 18px;
+  .dialogue {
+    background: rgba(0,0,0,0.55);
+    border-left: 3px solid var(--accent-cyan);
+    padding: 12px 16px;
+    margin: 14px 0;
     font-family: var(--font-mono);
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    overflow: hidden;
+    font-size: 0.92rem;
+    color: #00f0ff;
   }
-  button.action-btn:hover {
-    border-color: var(--border-cyan);
-    background: rgba(0, 240, 255, 0.15);
-    box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-    transform: translateY(-2px);
+  .dialogue.karan {
+    border-left-color: var(--accent-red);
+    color: #ff9e9e;
   }
-  button.action-btn::before {
-    content: "► ";
-    color: var(--border-cyan);
+  .dialogue.madaari {
+    border-left-color: var(--accent-gold);
+    color: #ffd166;
+  }
+  .speaker {
+    font-weight: bold;
+    font-size: 0.75rem;
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    color: #fff;
   }
 
-  /* Audio Synthesizer Status */
-  .audio-toggle {
+  .spec-box {
+    background: rgba(0, 240, 255, 0.04);
+    border: 1px dashed rgba(0, 240, 255, 0.3);
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    margin: 14px 0;
+    color: #a0c4d8;
+  }
+
+  .final-cta-card {
+    background: linear-gradient(180deg, #121824 0%, #06080c 100%);
+    border: 2px solid var(--accent-red);
+    padding: 40px 24px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 0 50px rgba(255, 42, 42, 0.3);
+  }
+  .share-btn {
+    display: inline-block;
+    margin-top: 20px;
+    background: var(--accent-red);
+    color: #fff;
+    padding: 14px 28px;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: bold;
+    border: none;
     cursor: pointer;
-    color: var(--border-cyan);
-    font-size: 0.75rem;
+    border-radius: 3px;
+    box-shadow: 0 0 20px rgba(255, 42, 42, 0.6);
   }
 </style>
 </head>
 <body>
 
-<!-- WebGL Three.js Container -->
 <div id="webgl-canvas"></div>
 <div class="crt-overlay"></div>
 
-<div id="app-wrapper">
-  <header>
-    <div><span class="hud-tag tag-red">CANNIBAL TACTICAL OS v5.0</span></div>
-    <div id="hud-mode" style="color: #8fa0b5;">MODE: CALCULUS_ACTIVE</div>
-    <div class="audio-toggle" onclick="toggleAudioEngine()">[SOUND SYNTH: ENABLED]</div>
-  </header>
-
-  <div class="center-stage">
-    <!-- Left Tactical Status Panel -->
-    <div class="tactical-sidebar">
-      <div>
-        <div class="target-frame">
-          <div class="target-avatar-icon" id="tactical-icon">🥷</div>
-          <div style="font-size: 0.75rem; margin-top: 8px; color: var(--border-red);" id="target-designation">SUBJECT: KARAN (MOURNING SHROUD)</div>
-        </div>
-
-        <div class="stats-block">
-          <div class="bar-wrapper">
-            <div class="bar-label"><span>VITAL MATRIX (HP)</span><span id="hp-val">100/100</span></div>
-            <div class="bar-track"><div class="bar-fill fill-hp" id="hp-bar"></div></div>
-          </div>
-          <div class="bar-wrapper">
-            <div class="bar-label"><span>TACTICAL THREAT</span><span id="threat-val">OPTIMIZED</span></div>
-            <div class="bar-track"><div class="bar-fill fill-threat" id="threat-bar"></div></div>
-          </div>
-          <div style="margin-top: 10px; font-size: 0.72rem; color: #6a7c92;">
-            <div>ASSET: WHITE BIRD [MACH 3]</div>
-            <div>VEHICLE: CANNIBAL-VISCERA F76</div>
-            <div>WEAPON: TITANIUM SPEAR / KHIRPAAN</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="font-size: 0.7rem; color: var(--border-cyan); border-top: 1px solid rgba(0,240,255,0.2); padding-top: 8px;">
-        GHOST PROTOCOL: SYNCHRONIZED
-      </div>
-    </div>
-
-    <!-- Center Narrative / Game Output -->
-    <div class="narrative-viewport">
-      <div>
-        <div class="chapter-title" id="node-title">CHAPTER 1: THE ANATOMY OF A DISEASE</div>
-        <div class="chapter-loc" id="node-loc">[LOC] TROPICAL JUNGLE // PUDUCHERRY OUTSKIRTS</div>
-        <div class="terminal-text" id="node-text">
-          Rain soaks into the thick mud around your boots. The white fur coat is stained with fresh crimson. An elite private mercenary crawls across the filth, murmuring about mercy. He doesn't understand: kindness was a cage, and the man who wore that cage died with Dripti.
-        </div>
-      </div>
-      <div id="dynamic-log" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--border-cyan); margin-top: 10px;">
-        > Atmospheric telemetry loaded. 3D grid tracking active.
-      </div>
-    </div>
+<header>
+  <div><strong>CANNIBAL // 40-CHAPTER EPIC</strong></div>
+  <div id="live-chapter-indicator" style="color: var(--accent-gold);">CH 1: THE ANATOMY OF A DISEASE</div>
+  <div style="display: flex; gap: 10px;">
+    <button class="hud-btn" id="audio-btn" onclick="toggleAudioEngine()">SOUND: OFF</button>
+    <button class="hud-btn" onclick="toggleToc()">INDEX [1-40]</button>
   </div>
+  <div class="progress-track"><div id="progress-bar"></div></div>
+</header>
 
-  <footer id="action-controls">
-    <!-- Buttons dynamically mounted here -->
-  </footer>
+<div id="toc-drawer">
+  <h4 style="color: var(--accent-cyan); margin-bottom: 12px;">OPERATIONAL LOGS</h4>
+  <div id="toc-list"></div>
 </div>
+
+<main class="comic-stream" id="comic-stream">
+  <!-- 40 Chapters Procedurally Mounted Here -->
+</main>
 
 <script>
 /**
  * -------------------------------------------------------------
- * 1. PROCEDURAL 3D GRAPHICS ENGINE (THREE.JS)
+ * 1. 3D WEBGL AMBIENCE (THREE.JS)
  * -------------------------------------------------------------
  */
-let scene, camera, renderer, particles, wireMesh, carGroup;
-let sceneMode = "jungle"; // "jungle", "city", "orbit", "combat"
+let scene, camera, renderer, particles, wireMesh;
 
 function init3D() {
   const container = document.getElementById("webgl-canvas");
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.z = 30;
+  camera.position.z = 32;
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
-  // Background Grid Matrix
-  const gridHelper = new THREE.GridHelper(100, 40, 0x00f0ff, 0x112233);
-  gridHelper.rotation.x = Math.PI / 2.5;
-  gridHelper.position.y = -10;
+  const gridHelper = new THREE.GridHelper(120, 50, 0x00f0ff, 0x112233);
+  gridHelper.rotation.x = Math.PI / 2.4;
+  gridHelper.position.y = -12;
   scene.add(gridHelper);
 
-  // Kinetic Particle Field (Rain / Atmospheric Dust)
-  const particleCount = 1200;
+  const pCount = 1200;
   const geom = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  for(let i = 0; i < particleCount * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 100;
-    positions[i+1] = (Math.random() - 0.5) * 100;
-    positions[i+2] = (Math.random() - 0.5) * 100;
+  const pos = new Float32Array(pCount * 3);
+  for (let i = 0; i < pCount * 3; i += 3) {
+    pos[i] = (Math.random() - 0.5) * 120;
+    pos[i+1] = (Math.random() - 0.5) * 120;
+    pos[i+2] = (Math.random() - 0.5) * 120;
   }
-  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const mat = new THREE.PointsMaterial({ color: 0x00f0ff, size: 0.35, transparent: true, opacity: 0.6 });
-  particles = new THREE.Points(geom, mat);
+  geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  particles = new THREE.Points(geom, new THREE.PointsMaterial({ color: 0x00f0ff, size: 0.35, transparent: true, opacity: 0.6 }));
   scene.add(particles);
 
-  // Central 3D Wireframe Entity (Represents Drone / Threat Vector)
-  const wireGeom = new THREE.IcosahedronGeometry(7, 1);
-  const wireMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, wireframe: true });
-  wireMesh = new THREE.Mesh(wireGeom, wireMat);
+  wireMesh = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(7, 1),
+    new THREE.MeshBasicMaterial({ color: 0xff2a2a, wireframe: true })
+  );
   scene.add(wireMesh);
 
-  window.addEventListener('resize', onWindowResize, false);
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
   animate3D();
-}
-
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate3D() {
   requestAnimationFrame(animate3D);
-
-  if (particles) {
-    particles.rotation.y += 0.001;
-    particles.rotation.x += 0.0005;
-  }
-  if (wireMesh) {
-    wireMesh.rotation.x += 0.005;
-    wireMesh.rotation.y += 0.008;
-  }
-
+  if (particles) { particles.rotation.y += 0.0008; particles.rotation.x += 0.0004; }
+  if (wireMesh) { wireMesh.rotation.x += 0.004; wireMesh.rotation.y += 0.006; }
   renderer.render(scene, camera);
-}
-
-function trigger3DEffect(mode) {
-  if (mode === 'combat') {
-    wireMesh.material.color.setHex(0xff0033);
-    wireMesh.scale.set(1.4, 1.4, 1.4);
-  } else if (mode === 'orbit') {
-    wireMesh.material.color.setHex(0x00f0ff);
-    wireMesh.scale.set(0.8, 0.8, 0.8);
-  } else {
-    wireMesh.material.color.setHex(0x00e676);
-    wireMesh.scale.set(1.0, 1.0, 1.0);
-  }
 }
 
 /**
@@ -374,275 +354,555 @@ function trigger3DEffect(mode) {
  * -------------------------------------------------------------
  */
 let audioCtx = null;
-function playTacticalSound(type) {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+let audioEnabled = false;
 
-    const now = audioCtx.currentTime;
-    if (type === 'click') {
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-      osc.start(now); osc.stop(now + 0.08);
-    } else if (type === 'slash') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(450, now);
-      osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-      osc.start(now); osc.stop(now + 0.2);
-    } else if (type === 'shot') {
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(120, now);
-      osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-      osc.start(now); osc.stop(now + 0.3);
-    }
-  } catch(e) { /* Audio fallback */ }
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+
+function playSound(type) {
+  if (!audioEnabled || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  if (type === 'rain') {
+    osc.type = 'pink';
+    osc.frequency.setValueAtTime(100, now);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.linearRampToValueAtTime(0.001, now + 1.2);
+    osc.start(now); osc.stop(now + 1.2);
+  } else if (type === 'blade') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(550, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+    osc.start(now); osc.stop(now + 0.25);
+  } else if (type === 'engine') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(85, now);
+    osc.frequency.exponentialRampToValueAtTime(340, now + 0.7);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+    osc.start(now); osc.stop(now + 0.7);
+  } else if (type === 'gunshot') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(25, now + 0.25);
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+    osc.start(now); osc.stop(now + 0.25);
+  } else if (type === 'alarm') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.setValueAtTime(400, now + 0.15);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now); osc.stop(now + 0.3);
+  }
+}
+
 function toggleAudioEngine() {
-  playTacticalSound('click');
+  initAudio();
+  audioEnabled = !audioEnabled;
+  const btn = document.getElementById("audio-btn");
+  if (audioEnabled) {
+    btn.innerText = "SOUND: ON";
+    btn.style.background = "var(--accent-cyan)";
+    btn.style.color = "#000";
+    playSound('blade');
+  } else {
+    btn.innerText = "SOUND: OFF";
+    btn.style.background = "transparent";
+    btn.style.color = "var(--accent-cyan)";
+  }
 }
 
 /**
  * -------------------------------------------------------------
- * 3. NARRATIVE GRAPH & GAMEPLAY ENGINE
+ * 3. COMPLETE 40-CHAPTER NARRATIVE DATASET
  * -------------------------------------------------------------
  */
-const gameGraph = {
-  start: {
-    title: "Chapter 1: The Anatomy of a Disease",
-    location: "TROPICAL JUNGLE // PUDUCHERRY OUTSKIRTS",
-    icon: "🥷",
-    iconLabel: "SUBJECT: KARAN (MOURNING SHROUD)",
-    text: "Rain soaks into the thick mud around your boots. The white fur coat is stained with fresh crimson. An elite private mercenary crawls across the filth, murmuring about mercy. He doesn't understand: kindness was a cage, and the man who wore that cage died with Dripti.",
-    options: [
-      { text: "Execute Calculus: Interrogate mercenary", next: "ch1_interrogate" },
-      { text: "Deploy Titanium Knife: Engage Ambush Squad", action: () => startCombat("Leonard Mercenary Squad", 90, "ch1_interrogate") }
-    ]
+const chaptersData = [
+  {
+    num: 1,
+    title: "The Anatomy of a Disease",
+    loc: "TROPICAL JUNGLE // PUDUCHERRY OUTSKIRTS",
+    sound: "rain",
+    danger: true,
+    text: "Humanity is a disease, and Karan Padmaacharya used to be the fool trying to cure it. In the suffocating tropical mud, an elite mercenary crawls, begging for his wife and kids[cite: 1]. Karan pins his wrist with a tactical boot, sliding his combat blade out with mathematical precision[cite: 1]. 'Wife? I had a wife[cite: 1]. And they took her[cite: 1].'",
+    dialogue: { speaker: "THE CANNIBAL", text: "A natural fighter[cite: 1]. And more than that... a natural, God-gifted cannibal[cite: 1].", karan: true },
+    sfx: "SNAKT!"
   },
-  ch1_interrogate: {
-    title: "The S&P Checkbook",
-    location: "RAIN-SOAKED CLEARING // 0300 HOURS",
-    icon: "📜",
-    iconLabel: "ARTIFACT: S&P BANK CHECKBOOK",
-    text: "You extract a leather-bound artifact from his gear: stamped with 'S&P Bank, Mumbai' and linked to Leonard Securities. The trail leads directly to Ahmed Patel, who operates out of an offshore luxury casino boat in Goa.",
-    options: [
-      { text: "Board the White Bird & Fly to Goa", next: "ch4_goa_casino" }
-    ]
+  {
+    num: 2,
+    title: "Echoes in the Wood",
+    loc: "BENJAMIN LEONARD'S PENTHOUSE // MUMBAI",
+    sound: "blade",
+    danger: false,
+    text: "Kartikeya Padmaacharya—now operating under the alias Benjamin Leonard—swirls a crystal glass in his high-end penthouse[cite: 1]. He opens a hidden drawer holding two dossiers: one on the mysterious Man in White, and the other on his long-lost twin brother, Karan[cite: 1].",
+    dialogue: { speaker: "BENJAMIN LEONARD", text: "Killing broken and terrified men gives no excellence[cite: 1]. But fighting dangerous men does[cite: 1].", karan: false },
+    sfx: "CLICK."
   },
-  ch4_goa_casino: {
-    title: "Chapter 4: The Calculus of Chaos",
-    location: "OFFSHORE CASINO BOAT // ARABIAN SEA",
-    icon: "🎰",
-    iconLabel: "TARGET: AHMED PATEL",
-    text: "You infiltrate the casino in your pristine white suit. Patel is cornered in his private suite. You clear the mercenary security with tactical precision, but Patel intentionally fractures his own thumb to slip the handcuffs and flees via a dive-hatch into the sea.",
-    options: [
-      { text: "Decrypt recovered drive & track Patel to Dubai", next: "ch5_dubai_penthouse" }
-    ]
+  {
+    num: 3,
+    title: "The Paper Trail",
+    loc: "UPPER ATMOSPHERE // COCKPIT OF THE WHITE BIRD",
+    sound: "engine",
+    danger: false,
+    text: "Cruising at Mach 3, Karan searches the leather-bound checkbook recovered from the Puducherry outpost[cite: 1]. He decrypts an embossed mark: 'S&P BANK, MUMBAI'[cite: 1]. The target is Ahmed Patel—a flamboyant, corrupt banking executive who visits an offshore Goa casino boat every Sunday[cite: 1].",
+    spec: "ASSET: THE WHITE BIRD // Silos loaded with 10 tactical nuclear warheads & Class-Alpha Emergency Protocols[cite: 1]."
   },
-  ch5_dubai_penthouse: {
-    title: "Chapter 5: The Dubai Dead-Drop",
-    location: "50TH FLOOR PENTHOUSE // DUBAI",
-    icon: "🏙️",
-    iconLabel: "CRIME SCENE: PATEL LIQUIDATED",
-    text: "You breach the 50th-floor window, only to find Ahmed Patel already dead—his ribcage pulverized by the 6'5\" Overlord: The Big Guy. Dubai Tactical Police breach the doors with flashbangs.",
-    options: [
-      { text: "Dive off the 50th floor & deploy Wingsuit to Viscera", next: "ch6_viscera_speed" }
-    ]
+  {
+    num: 4,
+    title: "The Calculus of Chaos",
+    loc: "OFFSHORE CASINO BOAT // ARABIAN SEA",
+    sound: "blade",
+    danger: true,
+    text: "Disguised as Sean Dawson from Leonard Securities, Karan corners Ahmed Patel in his soundproofed suite[cite: 1]. Handcuffing the coward to a steel pole, Karan clears 40 mercenaries across the grand salon[cite: 1]. But Patel fractures his own thumb to escape, diving into the dark waves[cite: 1].",
+    sfx: "THWIP-CRACK!"
   },
-  ch6_viscera_speed: {
-    title: "Chapter 6: Absolute Friction",
-    location: "SHEIKH ZAYED ROAD // CANNIBAL-VISCERA COCKPIT",
-    icon: "🏎️",
-    iconLabel: "ASSET: FERRARI F76 VISCERA",
-    text: "You drop into the cockpit of the Cannibal-Viscera. Interceptors form a roadblock. You must cycle gears and deploy electronic countermeasures to blow through the perimeter.",
-    options: [
-      { text: "Shift G1 Kinetic Launch & fire Sonic Repulsors", next: "ch9_punjab_dhaba" },
-      { text: "Shift G5 Apex Override & deploy Carbon Containment Nets", next: "ch9_punjab_dhaba" }
-    ]
+  {
+    num: 5,
+    title: "The Dubai Dead-Drop",
+    loc: "50TH FLOOR PENTHOUSE // DUBAI",
+    sound: "gunshot",
+    danger: true,
+    text: "Tracking Patel's offshore wire transfers to Dubai, Karan breaches the 50th-floor glass[cite: 1]. He finds Patel pulverized by the 6'5\" Overlord—The Big Guy[cite: 1]. Dubai SWAT flashbangs detonate[cite: 1]. Karan dives off the balcony into terminal velocity, deploying his white wingsuit[cite: 1].",
+    dialogue: { speaker: "THE OVERLORD", text: "Security is an illusion when dealing with concrete force[cite: 1].", karan: false }
   },
-  ch9_punjab_dhaba: {
-    title: "Chapter 9: The Northern Fracture",
-    location: "ROADSIDE DHABA // DELHI-PUNJAB HIGHWAY",
-    icon: "💻",
-    iconLabel: "ASSET IDENTIFIED: TANYA RANDHAWA",
-    text: "You rescue nineteen-year-old software engineer Tanya Randhawa from Colonial Constructions thugs using red-chilli powder and Kalaripayattu. She holds the digital blueprints of an illegal deep-earth digging network.",
-    options: [
-      { text: "Board the White Bird & Decode Project Manni", next: "ch10_ghost_mirror" }
-    ]
+  {
+    num: 6,
+    title: "Absolute Friction",
+    loc: "SHEIKH ZAYED ROAD // CANNIBAL-VISCERA COCKPIT",
+    sound: "engine",
+    danger: true,
+    text: "Karan lands in the alleyway, boarding the Ferrari F76 Cannibal-Viscera[cite: 1]. He shifts through Gear 1 Kinetic Launch to Gear 5 Apex Override, firing directional sonic repulsors and high-tensile carbon nets to smash through police roadblocks into the Lahbab desert[cite: 1].",
+    sfx: "STU-TU-TU-CHHH!"
   },
-  ch10_ghost_mirror: {
-    title: "Chapter 10: The Ghost-Mirror Protocol",
-    location: "WHITE BIRD TACTICAL LAB // 60,000 FEET",
-    icon: "🛰️",
-    iconLabel: "ORBITAL OVERWATCH ACTIVE",
-    text: "Tanya correlates the dig sites to New Delhi, Kurukshetra, and Madhya Pradesh. The ancient 'Manni' stone is being excavated by Pakistani warlord Guftaar Madaari. You initiate the Ghost-Mirror protocol on ShastraBhandaar Punjab.",
-    options: [
-      { text: "Deploy Tanya as Senior Software Architect", next: "ch29_firewall_hunt" }
-    ]
+  {
+    num: 7,
+    title: "The Ghost Vector",
+    loc: "TOWER ZERO PENTHOUSE // MUMBAI",
+    sound: "blade",
+    danger: true,
+    text: "Decrypted GPS data leads Karan to the top of Tower Zero[cite: 1]. He engages a figure wearing a black trench coat and round glasses, executing a lethal neck-snap against a marble pillar and recovering an 'ASSETS' dossier[cite: 1].",
+    sfx: "SNAP."
   },
-  ch29_firewall_hunt: {
-    title: "Chapter 29: The Poetry of the Firewall",
-    location: "SHASTRABHANDAAR PUNJAB // SANDBOX PARTITION",
-    icon: "🛡️",
-    iconLabel: "INTERNAL AUDIT: 5 MOLES ISOLATED",
-    text: "Working alongside clean CFO Naveen Tripathi, Tanya identifies 5 syndicate moles (Joshi, Choithani, Malhotra, Saxena, Oberoi) laundering capital for Madaari. Their accounts are frozen and forwarded to the CEO.",
-    options: [
-      { text: "Lock Satellite Tracking onto Kurukshetra & Dwarka", next: "ch30_dwarka_alarm" }
-    ]
+  {
+    num: 8,
+    title: "The Sadr Syndicate",
+    loc: "AIWAN-E-SADR // ISLAMABAD",
+    sound: "blade",
+    danger: true,
+    text: "Guftaar Madaari—The Cobra—stands in the presidential palace with his authentic Napoleon sword[cite: 1]. When the Chief of Defence Staff fails to locate the 'MANNI' stone, Madaari beheads him in a single stroke, ordering his cybernetic titan, Sarmai Fauji, into active deployment[cite: 1].",
+    dialogue: { speaker: "GUFTAAR MADAARI", text: "Aapko Allah ki nahi, meri khairiyat ki zaroorat hai[cite: 1]!", madaari: true },
+    sfx: "SWISH-SPURT!"
   },
-  ch30_dwarka_alarm: {
-    title: "Chapter 30: The Dwarka Divergence",
-    location: "STRATOSPHERIC COMMAND // ARABIAN SEA AXIS",
-    icon: "🔱",
-    iconLabel: "CELESTIAL RESONANCE: MANNI STONE",
-    text: "The satellite resonance script detects massive ionizing energy signatures beneath the drowned palace of Dwarka. Suddenly, Madaari's cybernetic titan—Sarmai Fauji—intercepts your perimeter.",
-    options: [
-      { text: "Engage Sarmai Fauji in Decisive Melee", action: () => startCombat("Sarmai Fauji (Cybernetic Asura)", 150, "epilogue_victory") }
-    ]
+  {
+    num: 9,
+    title: "The Northern Fracture",
+    loc: "ROADSIDE DHABA // DELHI-PUNJAB HIGHWAY",
+    sound: "blade",
+    danger: true,
+    text: "Karan intercepts nineteen-year-old software engineer Tanya Randhawa on the run from Colonial Constructions thugs[cite: 1]. Using red-chilli powder and Kalaripayattu, he dismantles the squad in a filthy concrete restroom and extracts her onto his Royal Enfield Ronin[cite: 1].",
+    dialogue: { speaker: "TANYA RANDHAWA", text: "Tum unse bhi bhayaanak ho[cite: 1]!", karan: false }
   },
-  epilogue_victory: {
-    title: "Part 1 Complete: The Optimized Crusade",
-    location: "THE DEN // SUBTERRANEAN LAKE VAULT",
-    icon: "⚖️",
-    iconLabel: "MISSION STATUS: READY FOR PART 2",
-    text: "Sarmai Fauji is repelled, the internal corporate siphons are liquidated, and the coordinates to the primordial Manni in Dwarka are locked. Karan Padmaacharya dons his white mourning shroud once more.",
-    options: [
-      { text: "Restart Tactical Simulation", next: "start" }
-    ]
+  {
+    num: 10,
+    title: "The Ghost-Mirror Protocol",
+    loc: "WHITE BIRD LAB COMMAND HUB // STRATOSPHERE",
+    sound: "engine",
+    danger: false,
+    text: "Tanya analyzes the excavation data[cite: 1]. Colonial Constructions is drilling deep-earth nodes in New Delhi, Madhya Pradesh, and Kurukshetra to unearth 'Project Manni'[cite: 1]. Karan hides the Delhite police report confirming her parents were slaughtered[cite: 1].",
+    spec: "TARGET: PROJECT MANNI // Depth: 80 to 120 meters beneath ancient battlegrounds[cite: 1]."
+  },
+  {
+    num: 11,
+    title: "The Mythos Vector",
+    loc: "THE DEN // SUBTERRANEAN HEADQUARTERS",
+    sound: "alarm",
+    danger: false,
+    text: "Karan realizes he eliminated a primary architect of his wife's murder and breaks down into unhinged laughter[cite: 1]. Tanya discovers ancient scripture volumes in the white walls—The Mahabharat and Ramayan—realizing the dig sites are prehistoric battlefields of the gods[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "I wear pure white because it is the funeral shroud of my entire family[cite: 1].", karan: true }
+  },
+  {
+    num: 12,
+    title: "The Violation of Sanctuary",
+    loc: "THE DEN // OUTER CORRIDORS",
+    sound: "gunshot",
+    danger: true,
+    text: "Sarmai Fauji bypasses island defenses with a molecular clone of Karan's fingerprint[cite: 1]. He shatters Tanya's ribs with a brutal backhand and rips data drives from the server racks before Karan returns in the White Bird, engaging base-defense lasers[cite: 1].",
+    sfx: "CRUNCH!"
+  },
+  {
+    num: 13,
+    title: "How Do I Tell Her",
+    loc: "AUXILIARY TRAINING BAY // THE DEN",
+    sound: "blade",
+    danger: true,
+    text: "Tanya confronts Karan for keeping her locked away[cite: 1]. They enter an unguided, bloody fist-fight on the polished concrete to exorcise their trauma[cite: 1]. Alone at midnight, Karan stares at her parents' homicide report, whispering: 'How do I tell her[cite: 1]?'",
+    dialogue: { speaker: "TANYA", text: "A truce[cite: 1]?", karan: false }
+  },
+  {
+    num: 14,
+    title: "The Convergence of Shadows",
+    loc: "GLASS PENTHOUSE // OFFSHORE SYNDICATE",
+    sound: "alarm",
+    danger: false,
+    text: "Madaari reviews the stolen drives[cite: 1]. He laughs upon realizing the 'Cannibal' is merely a grieving widower from the Puducherry massacre, ordering Fauji to let him dig closer to the excavation traps[cite: 1].",
+    dialogue: { speaker: "GUFTAAR MADAARI", text: "He thinks his multi-billion tech makes him invisible[cite: 1]. He is just crawling toward his grave[cite: 1].", madaari: true }
+  },
+  {
+    num: 15,
+    title: "The Shell of a Hero",
+    loc: "CLASSIFIED DOSSIER: MAJOR YASH SINGHANIA",
+    sound: "gunshot",
+    danger: false,
+    text: "Flashback reveals Sarmai Fauji was once Indian Special Forces Major Yash Singhania—'Chaava'—and Tanya's former boyfriend[cite: 1]. Captured during Op-Ghostreach in Sargodha, his mind was liquefied and fused with unholy black metal[cite: 1].",
+    spec: "CYBERNETIC PROFILE: Raw physical strength of 50 men; skin fused with ancient black alloy[cite: 1]."
+  },
+  {
+    num: 16,
+    title: "The Ash and the Iron",
+    loc: "THE FORGOTTEN PUDUCHERRY WOODS",
+    sound: "gunshot",
+    danger: true,
+    text: "Flashback reveals Kartikeya was saved as a boy by an ancient ash-covered hermit[cite: 1]. In present day, Kartikeya returns to the cabin, interrogating the hermit about Puducherry survivors before coldly shooting his master in the forehead[cite: 1].",
+    sfx: "BANG."
+  },
+  {
+    num: 17,
+    title: "The Shroud of the Ghost",
+    loc: "THE DEN // INDIGO TERMINAL ARRAYS",
+    sound: "blade",
+    danger: false,
+    text: "Tanya questions Karan's lack of camouflage[cite: 1]. Karan explains that pure white represents tactical arrogance and the sacred mourning shroud (*Vairagya*) of Hindu tradition[cite: 1]. Tanya deploys an AI Scripture Scraper across global repositories[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "I wear white so they see the monster coming before they die[cite: 1].", karan: true }
+  },
+  {
+    num: 18,
+    title: "The Corporate Siphon",
+    loc: "SHASTRABHANDAAR PUNJAB CAMPUS",
+    sound: "alarm",
+    danger: false,
+    text: "CFO Naveen Tripathi identifies massive capital siphons inside ShastraBhandaar[cite: 1]. Karan disguises himself as Tanya's brother, Rishabh Randhawa, implanting her inside the software division while monitoring her from orbit[cite: 1].",
+    dialogue: { speaker: "NAVEEN TRIPATHI", text: "We operate on strict twelve-hour rotating server shifts[cite: 1].", karan: false }
+  },
+  {
+    num: 19,
+    title: "The Ghost in the Console",
+    loc: "PUNJAB R&D TERMINAL // STRATOSPHERE OVERWATCH",
+    sound: "blade",
+    danger: false,
+    text: "Tanya navigates legacy defense telemetry while analyst Vivek Malhotra micro-manages her[cite: 1]. Naveen steps in, giving her a custom-engineered macro tool that cuts her data processing workload in half[cite: 1].",
+    spec: "ORBITAL TELEMETRY: Karan monitors bone-conduction audio pings from the White Bird[cite: 1]."
+  },
+  {
+    num: 20,
+    title: "The Defrosting Grid",
+    loc: "CAMPUS GARDENS // TWILIGHT ATRIUM",
+    sound: "rain",
+    danger: false,
+    text: "Naveen shares clay *kulhads* of ginger tea with Tanya beneath a banyan tree, bonding over shared past trauma[cite: 1]. In the freezing stratosphere, Karan sits unmasked, watching their warmth through satellite CCTV[cite: 1].",
+    dialogue: { speaker: "NAVEEN", text: "Main tumhare liye normal boss banna bhi nahi chahta, Tanya[cite: 1].", karan: false }
+  },
+  {
+    num: 21,
+    title: "The Shield of the CFO",
+    loc: "EXECUTIVE LEVEL TERMINAL // MOHALI",
+    sound: "alarm",
+    danger: false,
+    text: "When a heuristic sweep flags Tanya's trace script, Naveen slots his personal executive root key to override the lockdown[cite: 1]. Karan warns Tanya against personal attachments, but her feelings deepen[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "He is an operational variable, Tanya[cite: 1]. Maintain distance[cite: 1].", karan: true }
+  },
+  {
+    num: 22,
+    title: "The Monsoon Vignettes",
+    loc: "CENTRAL GLASS ATRIUM // PUNJAB MONSOON",
+    sound: "rain",
+    danger: false,
+    text: "A violent storm traps Naveen and Tanya alone in the glass atrium[cite: 1]. Naveen confesses how corporate syndicates ruined his father's logistics firm[cite: 1]. As their hands touch over a digital tablet, boundaries dissolve[cite: 1].",
+    sfx: "THUNDER."
+  },
+  {
+    num: 23,
+    title: "The Autonomic Rhythm",
+    loc: "CENTRAL CORE VAULT // SUBTERRANEAN SECTOR",
+    sound: "rain",
+    danger: false,
+    text: "Tanya falls asleep during a 14-hour hardware tether[cite: 1]. Naveen drapes his warm charcoal suit jacket over her shoulders[cite: 1]. In the stratosphere, Karan listens to their intimate whispers in silent detachment[cite: 1].",
+    dialogue: { speaker: "NAVEEN", text: "Mujhe thand nahi lagti jab main tumhare paas hota hoon[cite: 1].", karan: false }
+  },
+  {
+    num: 24,
+    title: "Escaping the Atrium",
+    loc: "GOLDEN MUSTARD FIELDS // OUTSKIRTS OF MOHALI",
+    sound: "engine",
+    danger: false,
+    text: "Naveen skips a multi-billion board meeting to drive Tanya into the countryside[cite: 1]. They run through vibrant yellow fields like children[cite: 1]. Karan's angry stratospheric radio call is met with her fierce defiance[cite: 1].",
+    dialogue: { speaker: "TANYA", text: "Don't you dare call him a stranger again[cite: 1]!", karan: false }
+  },
+  {
+    num: 25,
+    title: "The Commander’s Calculus",
+    loc: "WHITE BIRD COMMAND DECK // 60,000 FEET",
+    sound: "engine",
+    danger: false,
+    text: "Karan analyzes audio logs, noting Tanya's stress indices drop to zero around Naveen[cite: 1]. Viewing her affection as tactical camouflage, he orders her to deepen her proximity to secure root access[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "Use his affection to solidify your local position[cite: 1].", karan: true }
+  },
+  {
+    num: 26,
+    title: "The Secrets of The Immortality",
+    loc: "PRE-HISTORIC LANKA & MODERN KARACHI",
+    sound: "gunshot",
+    danger: true,
+    text: "Guftaar Madaari recalls the Searing of Lanka, where divine *Astras* fused terrestrial iron into ancient black metal[cite: 1]. An overdose of atomized *Sanjeevani* sap mutated his cells, granting immortal, iron-dense bones and eternal shedding[cite: 1].",
+    spec: "BIOLOGICAL MUTATION: Weapon rejection and skeletal iron fusion via Sanjeevani sap[cite: 1]."
+  },
+  {
+    num: 27,
+    title: "The Rise of The Cobra",
+    loc: "BALOCHISTAN HIGHWAY // 1996",
+    sound: "blade",
+    danger: true,
+    text: "Flashback shows Madaari ambushed by the Lyari Black-Ops cartel and assassin *Siyah Jallad*[cite: 1]. Madaari dismembers the squad with dual *Khadga* swords, consolidating his iron grip over Karachi's underworld[cite: 1].",
+    sfx: "SLASH-CRACK!"
+  },
+  {
+    num: 28,
+    title: "The Parable of the Broken Mirror",
+    loc: "STRATOSPHERIC SOMNAMBULISM // WHITE BIRD",
+    sound: "alarm",
+    danger: true,
+    text: "Exhausted, Karan suffers a nightmare of dancing with Dripti at college before she transforms into a mutilated corpse[cite: 1]. He punches himself in the nose to wake up, greeted by seismic alarms across the subcontinent[cite: 1].",
+    sfx: "CRACK."
+  },
+  {
+    num: 29,
+    title: "The Poetry of the Firewall",
+    loc: "PRIVATE ADMINISTRATIVE SANDBOX // MOHALI",
+    sound: "alarm",
+    danger: false,
+    text: "Tanya shares a drink with Naveen, spinning a cover story about Colonial Constructions[cite: 1]. She uncovers 5 internal moles (Joshi, Choithani, Malhotra, Saxena, Oberoi), and Naveen vows to destroy them[cite: 1].",
+    spec: "SYNDICATE HIT-LIST: 5 internal ShastraBhandaar moles laundering billions for Madaari[cite: 1]."
+  },
+  {
+    num: 30,
+    title: "The Dwarka Divergence",
+    loc: "STRATOSPHERIC COMMAND // ARABIAN SEA AXIS",
+    sound: "alarm",
+    danger: true,
+    text: "Satellite resonance models detect intense ionizing radiation from the drowned palace of Dwarka—the true resting place of the Manni[cite: 1]. Karan learns Tanya confided in Naveen and roars in fury[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "What do you mean Naveen?! Did you tell him everything[cite: 1]?!", karan: true }
+  },
+  {
+    num: 31,
+    title: "The Clash of Allies",
+    loc: "COCKPIT OF THE WHITE BIRD // STRATOSPHERE",
+    sound: "alarm",
+    danger: true,
+    text: "Tanya and Karan engage in a vicious argument over Naveen's involvement[cite: 1]. Tanya accuses Karan of being a dead machine, while Karan warns her that human attachments lead to slaughter[cite: 1].",
+    dialogue: { speaker: "TANYA", text: "Tum insaan nahi rahe... tum ek cold machine ban chuke ho[cite: 1]!", karan: false }
+  },
+  {
+    num: 32,
+    title: "The Metallurgy of Vengeance",
+    loc: "THE DEN // ARMORY WORKBENCH",
+    sound: "blade",
+    danger: false,
+    text: "Karan forges specialized deep-sea diving armor, integrating lead-titanium alloy plates to withstand the R-9941 ionizing radiation of Dwarka's underwater trench[cite: 1].",
+    spec: "TACTICAL LOADOUT: Lead-Titanium Pressure Suit & High-Frequency Vibratory Daggers[cite: 1]."
+  },
+  {
+    num: 33,
+    title: "The Telemetry of a Trap",
+    loc: "ISLAMABAD // WAR ROOM",
+    sound: "alarm",
+    danger: false,
+    text: "Madaari's deep-sea sonar grids detect the resonance spikes off the coast of Gujarat[cite: 1]. He mobilizes a private naval fleet to intercept anyone approaching the submerged Dwarka coordinate[cite: 1].",
+    dialogue: { speaker: "GUFTAAR MADAARI", text: "Deploy the Sarmai Fauji into the trench[cite: 1].", madaari: true }
+  },
+  {
+    num: 34,
+    title: "The Shattered Covenant",
+    loc: "PUNJAB R&D // SUDDEN ARRESTS",
+    sound: "alarm",
+    danger: false,
+    text: "State police and corporate security raid ShastraBhandaar Punjab, arresting the five syndicate moles based on Naveen's dossier[cite: 1]. The financial siphon is officially severed[cite: 1].",
+    sfx: "SIRENS."
+  },
+  {
+    num: 35,
+    title: "The Attrition of the Broken",
+    loc: "THE DEN // PRE-DEPARTURE PROTOCOL",
+    sound: "blade",
+    danger: false,
+    text: "Tanya hands Karan the decrypted sub-surface acoustic maps of Dwarka[cite: 1]. An unspoken understanding passes between them—they are both broken orphans of the same shadow war[cite: 1].",
+    dialogue: { speaker: "TANYA", text: "Come back alive, Karan[cite: 1].", karan: false }
+  },
+  {
+    num: 36,
+    title: "The Witness Behind the Glass",
+    loc: "MOHALI HEADQUARTERS // EXECUTIVE BALCONY",
+    sound: "rain",
+    danger: false,
+    text: "Naveen stands on the rainy balcony, holding Tanya's discarded ID card[cite: 1]. He realizes her true world is far bigger than corporate balance sheets, whispering a silent vow of loyalty[cite: 1].",
+    dialogue: { speaker: "NAVEEN", text: "Tum jahan bhi jao, main tumhara intezaar karunga[cite: 1].", karan: false }
+  },
+  {
+    num: 37,
+    title: "The Tragedy",
+    loc: "FLASHBACK // PUDUCHERRY MASSACRE (RAW REALITY)",
+    sound: "gunshot",
+    danger: true,
+    text: "The fever broke[cite: 1]. Younger Karan lunges with a carving knife, slaughtering Ramesh's thugs[cite: 1]. In the crossfire, he loses control, eliminating everyone in the courtyard while Dripti dies watching the monster born[cite: 1].",
+    sfx: "BANG-BANG!"
+  },
+  {
+    num: 38,
+    title: "The Fading of a Star",
+    loc: "DEEP ARABIAN SEA // TRENCH DESCENT",
+    sound: "engine",
+    danger: true,
+    text: "The White Bird releases the submersible capsule into the abyss of Dwarka[cite: 1]. Ancient temple spires emerge from the ocean floor, glowing with primordial green celestial light[cite: 1].",
+    spec: "LOCATION: Submerged Dwarka Trench // Depth: 240 meters[cite: 1]."
+  },
+  {
+    num: 39,
+    title: "The Liquidation of Sanctuary",
+    loc: "DWARKA RUINS // UNDERWATER CHAMBER",
+    sound: "blade",
+    danger: true,
+    text: "Karan steps into the pressurized, air-pocketed inner sanctum of the drowned temple[cite: 1]. Waiting in the shadows is Sarmai Fauji, wielding an unholy black metal *Khadga*[cite: 1].",
+    sfx: "CLANG!"
+  },
+  {
+    num: 40,
+    title: "The Fields of Rest",
+    loc: "THE DEN // THE SACRED CRUSADE",
+    sound: "blade",
+    danger: true,
+    text: "Fauji is repelled in a clash of medieval steel and cybernetics[cite: 1]. The coordinates to the core Manni stone are extracted[cite: 1]. Karan stands in his subterranean fortress, wrapping his white mourning shroud tight[cite: 1]. Part 1 concludes; the war for the Manni begins[cite: 1].",
+    dialogue: { speaker: "THE CANNIBAL", text: "She was holding down the monster[cite: 1]. Now, let the world burn[cite: 1].", karan: true },
+    sfx: "CHRONICLE COMPLETE."
   }
-};
+];
 
-let currentCombat = {
-  enemyName: "",
-  enemyHp: 100,
-  enemyMaxHp: 100,
-  playerHp: 100,
-  victoryNode: "start"
-};
+/**
+ * -------------------------------------------------------------
+ * 4. MOUNTING AND INTERSECTION OBSERVERS
+ * -------------------------------------------------------------
+ */
+const comicStream = document.getElementById("comic-stream");
+const tocList = document.getElementById("toc-list");
 
-function renderNode(key) {
-  playTacticalSound('click');
-  const node = gameGraph[key];
-  trigger3DEffect('orbit');
+chaptersData.forEach((chap) => {
+  // Mount TOC Item
+  const tocItem = document.createElement("div");
+  tocItem.className = "toc-item";
+  tocItem.innerText = `CH ${chap.num}: ${chap.title}`;
+  tocItem.onclick = () => {
+    document.getElementById(`chapter-${chap.num}`).scrollIntoView({ behavior: 'smooth' });
+    toggleToc();
+  };
+  tocList.appendChild(tocItem);
 
-  document.getElementById("node-title").innerText = node.title;
-  document.getElementById("node-loc").innerText = `[LOC] ${node.location}`;
-  document.getElementById("node-text").innerText = node.text;
-  document.getElementById("tactical-icon").innerText = node.icon || "🥷";
-  document.getElementById("target-designation").innerText = node.iconLabel || "TARGET: UNKNOWN";
-  document.getElementById("hud-mode").innerText = "MODE: CALCULUS_ACTIVE";
+  // Mount Comic Panel
+  const panel = document.createElement("section");
+  panel.className = `panel ${chap.danger ? 'danger' : ''}`;
+  panel.id = `chapter-${chap.num}`;
+  panel.setAttribute('data-sound', chap.sound || 'blade');
+  panel.setAttribute('data-indicator', `CH ${chap.num}: ${chap.title.toUpperCase()}`);
 
-  const controls = document.getElementById("action-controls");
-  controls.innerHTML = "";
+  let dialogueHtml = "";
+  if (chap.dialogue) {
+    let dClass = chap.dialogue.karan ? "karan" : (chap.dialogue.madaari ? "madaari" : "");
+    dialogueHtml = `
+      <div class="dialogue ${dClass}">
+        <span class="speaker">${chap.dialogue.speaker}</span>
+        "${chap.dialogue.text}"
+      </div>
+    `;
+  }
 
-  node.options.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.className = "action-btn";
-    btn.innerText = opt.text;
-    btn.onclick = () => {
-      if (opt.action) opt.action();
-      else if (opt.next) renderNode(opt.next);
-    };
-    controls.appendChild(btn);
-  });
-}
-
-function startCombat(enemyName, enemyHp, victoryNode) {
-  playTacticalSound('shot');
-  trigger3DEffect('combat');
-
-  currentCombat.enemyName = enemyName;
-  currentCombat.enemyHp = enemyHp;
-  currentCombat.enemyMaxHp = enemyHp;
-  currentCombat.playerHp = 100;
-  currentCombat.victoryNode = victoryNode;
-
-  renderCombatScreen();
-}
-
-function renderCombatScreen() {
-  document.getElementById("node-title").innerText = `ENGAGEMENT: ${currentCombat.enemyName.toUpperCase()}`;
-  document.getElementById("node-loc").innerText = `[CALCULUS OF SLAUGHTER] ACTIVE MELEE THREAT`;
-  document.getElementById("tactical-icon").innerText = "⚔️";
-  document.getElementById("target-designation").innerText = `TARGET: ${currentCombat.enemyName}`;
-  document.getElementById("hud-mode").innerText = "MODE: COMBAT_ENGAGED";
-
-  const pPct = Math.max(0, (currentCombat.playerHp / 100) * 100);
-  const ePct = Math.max(0, (currentCombat.enemyHp / currentCombat.enemyMaxHp) * 100);
-  document.getElementById("hp-bar").style.width = `${pPct}%`;
-  document.getElementById("hp-val").innerText = `${currentCombat.playerHp}/100`;
-  document.getElementById("threat-bar").style.width = `${ePct}%`;
-  document.getElementById("threat-val").innerText = `${currentCombat.enemyHp}/${currentCombat.enemyMaxHp}`;
-
-  const controls = document.getElementById("action-controls");
-  controls.innerHTML = `
-    <button class="action-btn" onclick="executeCombatTurn('knife')">Tactical Knife Slash (24-30 DMG)</button>
-    <button class="action-btn" onclick="executeCombatTurn('kalaripayattu')">Kalaripayattu Strike (18-24 DMG + Stun)</button>
-    <button class="action-btn" onclick="executeCombatTurn('subsonic')">Suppressed Subsonic Shot (32-40 DMG)</button>
-    <button class="action-btn" onclick="executeCombatTurn('spear')">Titanium Spear Thrust (38-48 DMG)</button>
+  panel.innerHTML = `
+    <span class="act-badge">Chapter ${chap.num} // Arc Protocol</span>
+    <h2 class="chapter-heading">${chap.title}</h2>
+    <div class="location-tag">[LOC] ${chap.loc}</div>
+    <div class="prose">${chap.text}</div>
+    ${chap.sfx ? `<div class="sfx-word">${chap.sfx}</div>` : ''}
+    ${dialogueHtml}
+    ${chap.spec ? `<div class="spec-box">${chap.spec}</div>` : ''}
   `;
+  comicStream.appendChild(panel);
+});
+
+// Mount Final End Card
+const endCard = document.createElement("div");
+endCard.className = "final-cta-card";
+endCard.innerHTML = `
+  <span class="act-badge">Chronicle Complete</span>
+  <h2 class="chapter-heading" style="color: var(--accent-red);">CANNIBAL: PART 1 CONCLUDED</h2>
+  <p style="color: #a0b2c6; max-width: 580px; margin: 12px auto; font-size: 0.95rem;">
+    Written by Kushagra Singh (Copyright © 2026)[cite: 1]. The entire 40-chapter tech-noir vigilante saga is logged[cite: 1].
+  </p>
+  <button class="share-btn" onclick="shareOperationalRecord()">SHARE THIS RECORD (COPY LINK)</button>
+`;
+comicStream.appendChild(endCard);
+
+/**
+ * -------------------------------------------------------------
+ * 5. SCROLL ENGINE & PROGRESS TRACKER
+ * -------------------------------------------------------------
+ */
+const progressBar = document.getElementById('progress-bar');
+const liveIndicator = document.getElementById('live-chapter-indicator');
+const panels = document.querySelectorAll('.panel');
+
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const scrollPercent = (scrollTop / docHeight) * 100;
+  progressBar.style.width = scrollPercent + '%';
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      const sound = entry.target.getAttribute('data-sound');
+      const ind = entry.target.getAttribute('data-indicator');
+      if (ind) liveIndicator.innerText = ind;
+      if (sound) playSound(sound);
+    }
+  });
+}, { threshold: 0.25 });
+
+panels.forEach(p => observer.observe(p));
+
+function toggleToc() {
+  document.getElementById("toc-drawer").classList.toggle("open");
 }
 
-function executeCombatTurn(type) {
-  let dmg = 0;
-  let moveText = "";
-
-  if (type === 'knife') {
-    playTacticalSound('slash');
-    dmg = Math.floor(Math.random() * 7) + 24;
-    moveText = `You step inside the vector and slash for ${dmg} kinetic damage.`;
-  } else if (type === 'kalaripayattu') {
-    playTacticalSound('slash');
-    dmg = Math.floor(Math.random() * 7) + 18;
-    moveText = `You execute a Kalaripayattu hyper-extension strike for ${dmg} damage.`;
-  } else if (type === 'subsonic') {
-    playTacticalSound('shot');
-    dmg = Math.floor(Math.random() * 9) + 32;
-    moveText = `You fire a precision subsonic round for ${dmg} piercing damage.`;
-  } else if (type === 'spear') {
-    playTacticalSound('slash');
-    dmg = Math.floor(Math.random() * 11) + 38;
-    moveText = `You drive the ancient-pattern titanium spear forward for ${dmg} massive damage.`;
+function shareOperationalRecord() {
+  const shareText = "Experience 'CANNIBAL: The Optimized Vigilante' (Complete 40-Chapter Interactive Saga): " + window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareText).then(() => {
+      alert("Operational Link Copied to Clipboard! Ready to paste on Twitter/X, Discord, or Instagram.");
+    });
+  } else {
+    alert(shareText);
   }
-
-  currentCombat.enemyHp -= dmg;
-  document.getElementById("dynamic-log").innerText = `> ${moveText}`;
-
-  if (currentCombat.enemyHp <= 0) {
-    currentCombat.enemyHp = 0;
-    playTacticalSound('click');
-    alert(`${currentCombat.enemyName} eliminated with mathematical precision.`);
-    renderNode(currentCombat.victoryNode);
-    return;
-  }
-
-  // Enemy Counter-Attack
-  const eDmg = Math.floor(Math.random() * 10) + 12;
-  currentCombat.playerHp -= eDmg;
-  document.getElementById("node-text").innerText = `${moveText}\n\n${currentCombat.enemyName} retaliates with severe kinetic trauma, inflicting ${eDmg} DMG!`;
-
-  if (currentCombat.playerHp <= 0) {
-    currentCombat.playerHp = 0;
-    alert("Critical failure: The Cannibal has fallen in combat. Recalibrating...");
-    renderNode("start");
-    return;
-  }
-
-  renderCombatScreen();
 }
 
-// Initialize Graphics and Story Engine
 window.onload = () => {
   init3D();
-  renderNode("start");
 };
 </script>
 </body>
