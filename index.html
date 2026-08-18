@@ -3,389 +3,647 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CANNIBAL: The Optimized Vigilante</title>
+<title>CANNIBAL: The Optimized Vigilante - 3D Tactical Interface</title>
+<!-- Three.js CDN for 3D Graphics -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
   :root {
-    --bg-main: #0a0c10;
-    --panel-bg: #12161f;
-    --border-color: #232b3b;
-    --accent-red: #d32f2f;
-    --accent-blue: #00bcd4;
-    --accent-emerald: #00e676;
-    --text-primary: #f5f5f5;
-    --text-muted: #8c9ba5;
+    --bg-main: #05070a;
+    --panel-bg: rgba(14, 18, 26, 0.88);
+    --border-cyan: #00f0ff;
+    --border-red: #ff2a2a;
+    --text-glow-cyan: 0 0 10px rgba(0, 240, 255, 0.7);
+    --text-glow-red: 0 0 10px rgba(255, 42, 42, 0.7);
     --font-mono: 'Courier New', Courier, monospace;
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background-color: var(--bg-main);
-    color: var(--text-primary);
+    color: #fff;
     font-family: var(--font-sans);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
   }
-  #app-container {
+
+  /* 3D Canvas Background */
+  #webgl-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* Scanline & CRT Vignette Overlay */
+  .crt-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: 900px;
-    height: 640px;
-    background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
+    height: 100%;
+    background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.85) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 100%, 100% 4px;
+    z-index: 2;
+    pointer-events: none;
   }
+
+  /* Main HUD App Framework */
+  #app-wrapper {
+    position: relative;
+    z-index: 3;
+    width: 94vw;
+    max-width: 1100px;
+    height: 90vh;
+    display: grid;
+    grid-template-rows: 55px 1fr 140px;
+    background: var(--panel-bg);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 240, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
   header {
-    background: #080a0e;
-    border-bottom: 1px solid var(--border-color);
-    padding: 10px 18px;
+    background: rgba(5, 8, 14, 0.95);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 24px;
     font-family: var(--font-mono);
     font-size: 0.85rem;
+    letter-spacing: 1.5px;
   }
-  .hud-badge {
-    padding: 3px 8px;
-    border-radius: 3px;
+  .hud-tag {
+    padding: 4px 10px;
+    border-radius: 2px;
     font-weight: bold;
   }
-  .badge-red { background: rgba(211,47,47,0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
-  .badge-blue { background: rgba(0,188,212,0.2); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
-  .main-stage {
-    flex: 1;
-    padding: 24px;
+  .tag-red { color: var(--border-red); border: 1px solid var(--border-red); text-shadow: var(--text-glow-red); }
+  .tag-cyan { color: var(--border-cyan); border: 1px solid var(--border-cyan); text-shadow: var(--text-glow-cyan); }
+
+  /* Interactive Stage Area */
+  .center-stage {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  /* Avatar / Tactical Wireframe Viewport */
+  .tactical-sidebar {
+    background: rgba(8, 12, 18, 0.85);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+  }
+  .target-frame {
+    height: 180px;
+    border: 1px dashed rgba(255, 42, 42, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 42, 42, 0.03);
+    position: relative;
+  }
+  .target-avatar-icon {
+    font-size: 3.5rem;
+    filter: drop-shadow(0 0 10px rgba(255, 42, 42, 0.8));
+    animation: floatAnim 3s infinite ease-in-out;
+  }
+  @keyframes floatAnim {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .stats-block {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: #a0b2c6;
+  }
+  .bar-wrapper { margin: 6px 0; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; }
+  .bar-track { height: 8px; background: #16202c; border-radius: 1px; overflow: hidden; margin-top: 2px; }
+  .bar-fill { height: 100%; transition: width 0.4s ease; }
+  .fill-hp { width: 100%; background: #00e676; box-shadow: 0 0 8px #00e676; }
+  .fill-threat { width: 45%; background: var(--border-red); box-shadow: 0 0 8px var(--border-red); }
+
+  /* Narrative & Terminal Stage */
+  .narrative-viewport {
+    background: rgba(4, 7, 12, 0.75);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow-y: auto;
   }
-  .story-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--accent-red);
+  .chapter-title {
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    color: var(--border-red);
+    text-shadow: var(--text-glow-red);
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
-  .story-location {
+  .chapter-loc {
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 16px;
+    color: var(--border-cyan);
+    letter-spacing: 1px;
+    margin-bottom: 14px;
   }
-  .story-box {
-    background: rgba(0,0,0,0.4);
-    border-left: 3px solid var(--accent-red);
+  .terminal-text {
+    font-size: 0.96rem;
+    line-height: 1.7;
+    color: #d1dbe5;
+    background: rgba(0,0,0,0.3);
     padding: 16px;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    min-height: 160px;
-    color: #e0e0e0;
+    border-left: 3px solid var(--border-red);
+    min-height: 140px;
   }
-  .actions-grid {
+
+  /* Control Panel / Actions */
+  footer {
+    background: rgba(6, 10, 16, 0.95);
+    border-top: 1px solid rgba(0, 240, 255, 0.2);
+    padding: 16px 24px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 18px;
+    gap: 14px;
+    align-items: center;
   }
-  button {
-    background: #18202c;
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 12px 14px;
-    font-size: 0.88rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s ease;
-    font-family: var(--font-sans);
-  }
-  button:hover {
-    background: #222d3d;
-    border-color: var(--accent-red);
+  button.action-btn {
+    background: linear-gradient(135deg, rgba(16, 25, 38, 0.9) 0%, rgba(8, 14, 22, 0.9) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.3);
     color: #fff;
-    transform: translateY(-1px);
-  }
-  .combat-stats-bar {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 14px;
+    padding: 14px 18px;
     font-family: var(--font-mono);
     font-size: 0.85rem;
-  }
-  .bar-container {
-    width: 45%;
-  }
-  .hp-bar {
-    height: 10px;
-    background: #263238;
-    border-radius: 2px;
-    margin-top: 4px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
     overflow: hidden;
   }
-  .hp-fill-player { height: 100%; width: 100%; background: var(--accent-emerald); transition: width 0.3s; }
-  .hp-fill-enemy { height: 100%; width: 100%; background: var(--accent-red); transition: width 0.3s; }
-  .log-console {
-    background: #06080b;
-    border: 1px solid #1a2230;
-    padding: 10px;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    height: 110px;
-    overflow-y: auto;
-    color: var(--accent-blue);
-    margin-bottom: 12px;
+  button.action-btn:hover {
+    border-color: var(--border-cyan);
+    background: rgba(0, 240, 255, 0.15);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+    transform: translateY(-2px);
+  }
+  button.action-btn::before {
+    content: "► ";
+    color: var(--border-cyan);
+  }
+
+  /* Audio Synthesizer Status */
+  .audio-toggle {
+    cursor: pointer;
+    color: var(--border-cyan);
+    font-size: 0.75rem;
   }
 </style>
 </head>
 <body>
 
-<div id="app-container">
+<!-- WebGL Three.js Container -->
+<div id="webgl-canvas"></div>
+<div class="crt-overlay"></div>
+
+<div id="app-wrapper">
   <header>
-    <div><span class="hud-badge badge-red">SYSTEM: CANNIBAL OS v4.2</span></div>
-    <div id="status-display">CALCULUS: ACTIVE</div>
-    <div><span class="hud-badge badge-blue" id="identity-display">TARGET: UNKNOWN</span></div>
+    <div><span class="hud-tag tag-red">CANNIBAL TACTICAL OS v5.0</span></div>
+    <div id="hud-mode" style="color: #8fa0b5;">MODE: CALCULUS_ACTIVE</div>
+    <div class="audio-toggle" onclick="toggleAudioEngine()">[SOUND SYNTH: ENABLED]</div>
   </header>
 
-  <div class="main-stage" id="stage">
-    <!-- Dynamic Interface Mounted by Engine -->
+  <div class="center-stage">
+    <!-- Left Tactical Status Panel -->
+    <div class="tactical-sidebar">
+      <div>
+        <div class="target-frame">
+          <div class="target-avatar-icon" id="tactical-icon">🥷</div>
+          <div style="font-size: 0.75rem; margin-top: 8px; color: var(--border-red);" id="target-designation">SUBJECT: KARAN (MOURNING SHROUD)</div>
+        </div>
+
+        <div class="stats-block">
+          <div class="bar-wrapper">
+            <div class="bar-label"><span>VITAL MATRIX (HP)</span><span id="hp-val">100/100</span></div>
+            <div class="bar-track"><div class="bar-fill fill-hp" id="hp-bar"></div></div>
+          </div>
+          <div class="bar-wrapper">
+            <div class="bar-label"><span>TACTICAL THREAT</span><span id="threat-val">OPTIMIZED</span></div>
+            <div class="bar-track"><div class="bar-fill fill-threat" id="threat-bar"></div></div>
+          </div>
+          <div style="margin-top: 10px; font-size: 0.72rem; color: #6a7c92;">
+            <div>ASSET: WHITE BIRD [MACH 3]</div>
+            <div>VEHICLE: CANNIBAL-VISCERA F76</div>
+            <div>WEAPON: TITANIUM SPEAR / KHIRPAAN</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.7rem; color: var(--border-cyan); border-top: 1px solid rgba(0,240,255,0.2); padding-top: 8px;">
+        GHOST PROTOCOL: SYNCHRONIZED
+      </div>
+    </div>
+
+    <!-- Center Narrative / Game Output -->
+    <div class="narrative-viewport">
+      <div>
+        <div class="chapter-title" id="node-title">CHAPTER 1: THE ANATOMY OF A DISEASE</div>
+        <div class="chapter-loc" id="node-loc">[LOC] TROPICAL JUNGLE // PUDUCHERRY OUTSKIRTS</div>
+        <div class="terminal-text" id="node-text">
+          Rain soaks into the thick mud around your boots. The white fur coat is stained with fresh crimson. An elite private mercenary crawls across the filth, murmuring about mercy. He doesn't understand: kindness was a cage, and the man who wore that cage died with Dripti.
+        </div>
+      </div>
+      <div id="dynamic-log" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--border-cyan); margin-top: 10px;">
+        > Atmospheric telemetry loaded. 3D grid tracking active.
+      </div>
+    </div>
   </div>
+
+  <footer id="action-controls">
+    <!-- Buttons dynamically mounted here -->
+  </footer>
 </div>
 
 <script>
 /**
- * Game State & Narrative Graph
+ * -------------------------------------------------------------
+ * 1. PROCEDURAL 3D GRAPHICS ENGINE (THREE.JS)
+ * -------------------------------------------------------------
  */
-const state = {
-  chapter: 1,
-  playerHp: 100,
-  playerMaxHp: 100,
-  enemyHp: 100,
-  enemyMaxHp: 100,
-  enemyName: "",
-  molesFound: 0,
-  visceraSpeed: 0,
-  combatLog: []
-};
+let scene, camera, renderer, particles, wireMesh, carGroup;
+let sceneMode = "jungle"; // "jungle", "city", "orbit", "combat"
 
-const storyNodes = {
+function init3D() {
+  const container = document.getElementById("webgl-canvas");
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 30;
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer.domElement);
+
+  // Background Grid Matrix
+  const gridHelper = new THREE.GridHelper(100, 40, 0x00f0ff, 0x112233);
+  gridHelper.rotation.x = Math.PI / 2.5;
+  gridHelper.position.y = -10;
+  scene.add(gridHelper);
+
+  // Kinetic Particle Field (Rain / Atmospheric Dust)
+  const particleCount = 1200;
+  const geom = new THREE.BufferGeometry();
+  const positions = new Float32Array(particleCount * 3);
+  for(let i = 0; i < particleCount * 3; i += 3) {
+    positions[i] = (Math.random() - 0.5) * 100;
+    positions[i+1] = (Math.random() - 0.5) * 100;
+    positions[i+2] = (Math.random() - 0.5) * 100;
+  }
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0x00f0ff, size: 0.35, transparent: true, opacity: 0.6 });
+  particles = new THREE.Points(geom, mat);
+  scene.add(particles);
+
+  // Central 3D Wireframe Entity (Represents Drone / Threat Vector)
+  const wireGeom = new THREE.IcosahedronGeometry(7, 1);
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, wireframe: true });
+  wireMesh = new THREE.Mesh(wireGeom, wireMat);
+  scene.add(wireMesh);
+
+  window.addEventListener('resize', onWindowResize, false);
+  animate3D();
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+
+  if (particles) {
+    particles.rotation.y += 0.001;
+    particles.rotation.x += 0.0005;
+  }
+  if (wireMesh) {
+    wireMesh.rotation.x += 0.005;
+    wireMesh.rotation.y += 0.008;
+  }
+
+  renderer.render(scene, camera);
+}
+
+function trigger3DEffect(mode) {
+  if (mode === 'combat') {
+    wireMesh.material.color.setHex(0xff0033);
+    wireMesh.scale.set(1.4, 1.4, 1.4);
+  } else if (mode === 'orbit') {
+    wireMesh.material.color.setHex(0x00f0ff);
+    wireMesh.scale.set(0.8, 0.8, 0.8);
+  } else {
+    wireMesh.material.color.setHex(0x00e676);
+    wireMesh.scale.set(1.0, 1.0, 1.0);
+  }
+}
+
+/**
+ * -------------------------------------------------------------
+ * 2. PROCEDURAL SOUND SYNTHESIZER (WEB AUDIO API)
+ * -------------------------------------------------------------
+ */
+let audioCtx = null;
+function playTacticalSound(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+    if (type === 'click') {
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'slash') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'shot') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now); osc.stop(now + 0.3);
+    }
+  } catch(e) { /* Audio fallback */ }
+}
+function toggleAudioEngine() {
+  playTacticalSound('click');
+}
+
+/**
+ * -------------------------------------------------------------
+ * 3. NARRATIVE GRAPH & GAMEPLAY ENGINE
+ * -------------------------------------------------------------
+ */
+const gameGraph = {
   start: {
     title: "Chapter 1: The Anatomy of a Disease",
     location: "TROPICAL JUNGLE // PUDUCHERRY OUTSKIRTS",
+    icon: "🥷",
+    iconLabel: "SUBJECT: KARAN (MOURNING SHROUD)",
     text: "Rain soaks into the thick mud around your boots. The white fur coat is stained with fresh crimson. An elite private mercenary crawls across the filth, murmuring about mercy. He doesn't understand: kindness was a cage, and the man who wore that cage died with Dripti.",
     options: [
-      { text: "Execute Calculus: Interrogate the mercenary", next: "ch1_interrogate" },
-      { text: "Deploy Titanium Knife: Clean extraction", next: "ch1_combat_intro" }
+      { text: "Execute Calculus: Interrogate mercenary", next: "ch1_interrogate" },
+      { text: "Deploy Titanium Knife: Engage Ambush Squad", action: () => startCombat("Leonard Mercenary Squad", 90, "ch1_interrogate") }
     ]
   },
   ch1_interrogate: {
     title: "The S&P Checkbook",
     location: "RAIN-SOAKED CLEARING // 0300 HOURS",
+    icon: "📜",
+    iconLabel: "ARTIFACT: S&P BANK CHECKBOOK",
     text: "You extract a leather-bound artifact from his gear: stamped with 'S&P Bank, Mumbai' and linked to Leonard Securities. The trail leads directly to Ahmed Patel, who operates out of an offshore luxury casino boat in Goa.",
     options: [
-      { text: "Board the White Bird & fly to Goa", next: "ch4_goa_approach" }
+      { text: "Board the White Bird & Fly to Goa", next: "ch4_goa_casino" }
     ]
   },
-  ch1_combat_intro: {
-    title: "Mercenary Squad Ambush",
-    location: "JUNGLE CANOPY // POINT BLANK",
-    text: "Laser sights paint your white tactical suit. Private dogs of Leonard Securities are attempting an envelopment.",
-    options: [
-      { text: "Engage Squad in Close-Quarters Combat", action: () => startCombat("Leonard Mercenary Squad", 80, "ch1_interrogate") }
-    ]
-  },
-  ch4_goa_approach: {
+  ch4_goa_casino: {
     title: "Chapter 4: The Calculus of Chaos",
     location: "OFFSHORE CASINO BOAT // ARABIAN SEA",
-    text: "You arrive disguised as Sean Dawson from Leonard Securities. Ahmed Patel is cornered in his soundproof suite. After clearing the corridor with silent precision, you return to find Patel has fractured his own thumb to slip the cuffs and fled through a dive-hatch, leaving an encrypted drive.",
+    icon: "🎰",
+    iconLabel: "TARGET: AHMED PATEL",
+    text: "You infiltrate the casino in your pristine white suit. Patel is cornered in his private suite. You clear the mercenary security with tactical precision, but Patel intentionally fractures his own thumb to slip the handcuffs and flees via a dive-hatch into the sea.",
     options: [
-      { text: "Decrypt the drive & track Patel to Dubai", next: "ch5_dubai" }
+      { text: "Decrypt recovered drive & track Patel to Dubai", next: "ch5_dubai_penthouse" }
     ]
   },
-  ch5_dubai: {
+  ch5_dubai_penthouse: {
     title: "Chapter 5: The Dubai Dead-Drop",
     location: "50TH FLOOR PENTHOUSE // DUBAI",
-    text: "You breach the 50th-floor glass, but you're too late. Ahmed Patel is already dead—his ribcage crushed by the blunt-force calling card of the 6'5\" Overlord: The Big Guy. Dubai Tactical Police breach the suite immediately.",
+    icon: "🏙️",
+    iconLabel: "CRIME SCENE: PATEL LIQUIDATED",
+    text: "You breach the 50th-floor window, only to find Ahmed Patel already dead—his ribcage pulverized by the 6'5\" Overlord: The Big Guy. Dubai Tactical Police breach the doors with flashbangs.",
     options: [
-      { text: "Dive off the 50th floor into the alleyway", next: "ch6_viscera_escape" }
+      { text: "Dive off the 50th floor & deploy Wingsuit to Viscera", next: "ch6_viscera_speed" }
     ]
   },
-  ch6_viscera_escape: {
+  ch6_viscera_speed: {
     title: "Chapter 6: Absolute Friction",
-    location: "VIP ALLEYWAY // CANNIBAL-VISCERA COCKPIT",
-    text: "You land in the alleyway and jump into the matte-white Ferrari F76 Cannibal-Viscera. Three police interceptors block the exit onto Sheikh Zayed Road. You must engage the transmission and tactical countermeasures.",
+    location: "SHEIKH ZAYED ROAD // CANNIBAL-VISCERA COCKPIT",
+    icon: "🏎️",
+    iconLabel: "ASSET: FERRARI F76 VISCERA",
+    text: "You drop into the cockpit of the Cannibal-Viscera. Interceptors form a roadblock. You must cycle gears and deploy electronic countermeasures to blow through the perimeter.",
     options: [
-      { text: "Shift G1 Kinetic Launch & deploy Sonic Repulsors", next: "ch9_punjab_intercept" },
-      { text: "Shift G5 Apex Override & launch Carbon Nets", next: "ch9_punjab_intercept" }
+      { text: "Shift G1 Kinetic Launch & fire Sonic Repulsors", next: "ch9_punjab_dhaba" },
+      { text: "Shift G5 Apex Override & deploy Carbon Containment Nets", next: "ch9_punjab_dhaba" }
     ]
   },
-  ch9_punjab_intercept: {
+  ch9_punjab_dhaba: {
     title: "Chapter 9: The Northern Fracture",
     location: "ROADSIDE DHABA // DELHI-PUNJAB HIGHWAY",
-    text: "You meet nineteen-year-old software prodigy Tanya Randhawa on the run from Colonial Constructions thugs. After neutralizing the goons with red chilli calculus and Kalaripayattu, you secure her onto the White Bird.",
+    icon: "💻",
+    iconLabel: "ASSET IDENTIFIED: TANYA RANDHAWA",
+    text: "You rescue nineteen-year-old software engineer Tanya Randhawa from Colonial Constructions thugs using red-chilli powder and Kalaripayattu. She holds the digital blueprints of an illegal deep-earth digging network.",
     options: [
-      { text: "Decode the Excavation Matrix (Project Manni)", next: "ch10_ghost_mirror" }
+      { text: "Board the White Bird & Decode Project Manni", next: "ch10_ghost_mirror" }
     ]
   },
   ch10_ghost_mirror: {
     title: "Chapter 10: The Ghost-Mirror Protocol",
-    location: "WHITE BIRD TACTICAL LAB // UPPER STRATOSPHERE",
-    text: "Tanya correlates the dig sites to Kurukshetra, New Delhi, and Madhya Pradesh. Guftaar Madaari is hunting the primordial 'Manni'. You must implant Tanya as a senior architect inside ShastraBhandaar Punjab while you monitor from orbit.",
+    location: "WHITE BIRD TACTICAL LAB // 60,000 FEET",
+    icon: "🛰️",
+    iconLabel: "ORBITAL OVERWATCH ACTIVE",
+    text: "Tanya correlates the dig sites to New Delhi, Kurukshetra, and Madhya Pradesh. The ancient 'Manni' stone is being excavated by Pakistani warlord Guftaar Madaari. You initiate the Ghost-Mirror protocol on ShastraBhandaar Punjab.",
     options: [
-      { text: "Initialize Tanya's Infiltration & Audit Terminal", next: "ch19_terminal_hack" }
+      { text: "Deploy Tanya as Senior Software Architect", next: "ch29_firewall_hunt" }
     ]
   },
-  ch19_terminal_hack: {
+  ch29_firewall_hunt: {
     title: "Chapter 29: The Poetry of the Firewall",
     location: "SHASTRABHANDAAR PUNJAB // SANDBOX PARTITION",
-    text: "Working alongside clean CFO Naveen Tripathi, Tanya isolates 5 internal syndicate moles laundering capital for Guftaar Madaari. Run the trace script to seal the indictment.",
+    icon: "🛡️",
+    iconLabel: "INTERNAL AUDIT: 5 MOLES ISOLATED",
+    text: "Working alongside clean CFO Naveen Tripathi, Tanya identifies 5 syndicate moles (Joshi, Choithani, Malhotra, Saxena, Oberoi) laundering capital for Madaari. Their accounts are frozen and forwarded to the CEO.",
     options: [
-      { text: "Execute Deep Trace: Identify Joshi, Choithani, Malhotra, Saxena, Oberoi", next: "ch30_dwarka" }
+      { text: "Lock Satellite Tracking onto Kurukshetra & Dwarka", next: "ch30_dwarka_alarm" }
     ]
   },
-  ch30_dwarka: {
+  ch30_dwarka_alarm: {
     title: "Chapter 30: The Dwarka Divergence",
-    location: "WHITE BIRD COMMAND DECK // 60,000 FEET",
-    text: "The satellite resonance script detects massive ionizing energy signatures beneath the drowned ruins of Dwarka. The primordial Manni is active. The final war against Madaari's cybernetic weapon, Sarmai Fauji, is locked.",
+    location: "STRATOSPHERIC COMMAND // ARABIAN SEA AXIS",
+    icon: "🔱",
+    iconLabel: "CELESTIAL RESONANCE: MANNI STONE",
+    text: "The satellite resonance script detects massive ionizing energy signatures beneath the drowned palace of Dwarka. Suddenly, Madaari's cybernetic titan—Sarmai Fauji—intercepts your perimeter.",
     options: [
-      { text: "Enter Combat: Intercept Sarmai Fauji", action: () => startCombat("Sarmai Fauji (Cybernetic Asura)", 140, "victory_screen") }
+      { text: "Engage Sarmai Fauji in Decisive Melee", action: () => startCombat("Sarmai Fauji (Cybernetic Asura)", 150, "epilogue_victory") }
     ]
   },
-  victory_screen: {
+  epilogue_victory: {
     title: "Part 1 Complete: The Optimized Crusade",
-    location: "THE DEN // SUBTERRANEAN LAKE VAULTS",
-    text: "Fauji is repelled, the ShastraBhandaar leaks are purged, and the coordinates to the Manni stone in Dwarka are secured. Karan Padmaacharya pulls his white mask over his face once more. The hunt continues in Part 2.",
+    location: "THE DEN // SUBTERRANEAN LAKE VAULT",
+    icon: "⚖️",
+    iconLabel: "MISSION STATUS: READY FOR PART 2",
+    text: "Sarmai Fauji is repelled, the internal corporate siphons are liquidated, and the coordinates to the primordial Manni in Dwarka are locked. Karan Padmaacharya dons his white mourning shroud once more.",
     options: [
-      { text: "Restart Simulation", next: "start" }
+      { text: "Restart Tactical Simulation", next: "start" }
     ]
   }
 };
 
-function renderNode(nodeKey) {
-  const node = storyNodes[nodeKey];
-  const stage = document.getElementById("stage");
-  
-  stage.innerHTML = `
-    <div>
-      <div class="story-title">${node.title}</div>
-      <div class="story-location">[LOC] ${node.location}</div>
-      <div class="story-box">${node.text}</div>
-    </div>
-    <div class="actions-grid" id="action-buttons"></div>
-  `;
+let currentCombat = {
+  enemyName: "",
+  enemyHp: 100,
+  enemyMaxHp: 100,
+  playerHp: 100,
+  victoryNode: "start"
+};
 
-  const btnContainer = document.getElementById("action-buttons");
+function renderNode(key) {
+  playTacticalSound('click');
+  const node = gameGraph[key];
+  trigger3DEffect('orbit');
+
+  document.getElementById("node-title").innerText = node.title;
+  document.getElementById("node-loc").innerText = `[LOC] ${node.location}`;
+  document.getElementById("node-text").innerText = node.text;
+  document.getElementById("tactical-icon").innerText = node.icon || "🥷";
+  document.getElementById("target-designation").innerText = node.iconLabel || "TARGET: UNKNOWN";
+  document.getElementById("hud-mode").innerText = "MODE: CALCULUS_ACTIVE";
+
+  const controls = document.getElementById("action-controls");
+  controls.innerHTML = "";
+
   node.options.forEach(opt => {
     const btn = document.createElement("button");
-    btn.innerHTML = `► ${opt.text}`;
+    btn.className = "action-btn";
+    btn.innerText = opt.text;
     btn.onclick = () => {
-      if (opt.action) {
-        opt.action();
-      } else if (opt.next) {
-        renderNode(opt.next);
-      }
+      if (opt.action) opt.action();
+      else if (opt.next) renderNode(opt.next);
     };
-    btnContainer.appendChild(btn);
+    controls.appendChild(btn);
   });
 }
 
 function startCombat(enemyName, enemyHp, victoryNode) {
-  state.enemyName = enemyName;
-  state.enemyHp = enemyHp;
-  state.enemyMaxHp = enemyHp;
-  state.playerHp = 100;
-  state.combatLog = [`Combat initialized against ${enemyName}.`];
-  renderCombat(victoryNode);
+  playTacticalSound('shot');
+  trigger3DEffect('combat');
+
+  currentCombat.enemyName = enemyName;
+  currentCombat.enemyHp = enemyHp;
+  currentCombat.enemyMaxHp = enemyHp;
+  currentCombat.playerHp = 100;
+  currentCombat.victoryNode = victoryNode;
+
+  renderCombatScreen();
 }
 
-function renderCombat(victoryNode) {
-  const stage = document.getElementById("stage");
-  const pPct = Math.max(0, (state.playerHp / state.playerMaxHp) * 100);
-  const ePct = Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100);
+function renderCombatScreen() {
+  document.getElementById("node-title").innerText = `ENGAGEMENT: ${currentCombat.enemyName.toUpperCase()}`;
+  document.getElementById("node-loc").innerText = `[CALCULUS OF SLAUGHTER] ACTIVE MELEE THREAT`;
+  document.getElementById("tactical-icon").innerText = "⚔️";
+  document.getElementById("target-designation").innerText = `TARGET: ${currentCombat.enemyName}`;
+  document.getElementById("hud-mode").innerText = "MODE: COMBAT_ENGAGED";
 
-  stage.innerHTML = `
-    <div>
-      <div class="story-title">ENGAGEMENT: ${state.enemyName.toUpperCase()}</div>
-      <div class="story-location">[CALCULUS OF SLAUGHTER] ACTIVE TARGET LOCK</div>
-      
-      <div class="combat-stats-bar">
-        <div class="bar-container">
-          <div>KARAN (CANNIBAL) - HP ${state.playerHp}/${state.playerMaxHp}</div>
-          <div class="hp-bar"><div class="hp-fill-player" style="width: ${pPct}%;"></div></div>
-        </div>
-        <div class="bar-container">
-          <div>${state.enemyName.toUpperCase()} - HP ${state.enemyHp}/${state.enemyMaxHp}</div>
-          <div class="hp-bar"><div class="hp-fill-enemy" style="width: ${ePct}%;"></div></div>
-        </div>
-      </div>
+  const pPct = Math.max(0, (currentCombat.playerHp / 100) * 100);
+  const ePct = Math.max(0, (currentCombat.enemyHp / currentCombat.enemyMaxHp) * 100);
+  document.getElementById("hp-bar").style.width = `${pPct}%`;
+  document.getElementById("hp-val").innerText = `${currentCombat.playerHp}/100`;
+  document.getElementById("threat-bar").style.width = `${ePct}%`;
+  document.getElementById("threat-val").innerText = `${currentCombat.enemyHp}/${currentCombat.enemyMaxHp}`;
 
-      <div class="log-console" id="combat-console">
-        ${state.combatLog.map(l => `<div>> ${l}</div>`).join("")}
-      </div>
-    </div>
-
-    <div class="actions-grid">
-      <button onclick="executeTurn('knife', '${victoryNode}')">► Tactical Combat Knife (22-28 DMG)</button>
-      <button onclick="executeTurn('kalaripayattu', '${victoryNode}')">► Kalaripayattu Hyper-Extension (15-20 DMG + Stun)</button>
-      <button onclick="executeTurn('firearm', '${victoryNode}')">► Suppressed Subsonic Round (30-38 DMG)</button>
-      <button onclick="executeTurn('titanium_spear', '${victoryNode}')">► White Titanium Spear Thrust (35-45 DMG)</button>
-    </div>
+  const controls = document.getElementById("action-controls");
+  controls.innerHTML = `
+    <button class="action-btn" onclick="executeCombatTurn('knife')">Tactical Knife Slash (24-30 DMG)</button>
+    <button class="action-btn" onclick="executeCombatTurn('kalaripayattu')">Kalaripayattu Strike (18-24 DMG + Stun)</button>
+    <button class="action-btn" onclick="executeCombatTurn('subsonic')">Suppressed Subsonic Shot (32-40 DMG)</button>
+    <button class="action-btn" onclick="executeCombatTurn('spear')">Titanium Spear Thrust (38-48 DMG)</button>
   `;
-
-  const consoleEl = document.getElementById("combat-console");
-  consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
-function executeTurn(actionType, victoryNode) {
-  let pDmg = 0;
-  let moveName = "";
+function executeCombatTurn(type) {
+  let dmg = 0;
+  let moveText = "";
 
-  if (actionType === 'knife') {
-    pDmg = Math.floor(Math.random() * 7) + 22;
-    moveName = "slashes with high-frequency titanium blade";
-  } else if (actionType === 'kalaripayattu') {
-    pDmg = Math.floor(Math.random() * 6) + 15;
-    moveName = "executes bone-shattering Kalaripayattu joint strike";
-  } else if (actionType === 'firearm') {
-    pDmg = Math.floor(Math.random() * 9) + 30;
-    moveName = "fires a precision subsonic round";
-  } else if (actionType === 'titanium_spear') {
-    pDmg = Math.floor(Math.random() * 11) + 35;
-    moveName = "drives ancient-pattern titanium spear forward";
+  if (type === 'knife') {
+    playTacticalSound('slash');
+    dmg = Math.floor(Math.random() * 7) + 24;
+    moveText = `You step inside the vector and slash for ${dmg} kinetic damage.`;
+  } else if (type === 'kalaripayattu') {
+    playTacticalSound('slash');
+    dmg = Math.floor(Math.random() * 7) + 18;
+    moveText = `You execute a Kalaripayattu hyper-extension strike for ${dmg} damage.`;
+  } else if (type === 'subsonic') {
+    playTacticalSound('shot');
+    dmg = Math.floor(Math.random() * 9) + 32;
+    moveText = `You fire a precision subsonic round for ${dmg} piercing damage.`;
+  } else if (type === 'spear') {
+    playTacticalSound('slash');
+    dmg = Math.floor(Math.random() * 11) + 38;
+    moveText = `You drive the ancient-pattern titanium spear forward for ${dmg} massive damage.`;
   }
 
-  state.enemyHp -= pDmg;
-  state.combatLog.push(`Karan ${moveName} for ${pDmg} DMG.`);
+  currentCombat.enemyHp -= dmg;
+  document.getElementById("dynamic-log").innerText = `> ${moveText}`;
 
-  if (state.enemyHp <= 0) {
-    state.enemyHp = 0;
-    state.combatLog.push(`Target neutralized.`);
-    alert(`Target eliminated with mathematical precision.`);
-    renderNode(victoryNode);
+  if (currentCombat.enemyHp <= 0) {
+    currentCombat.enemyHp = 0;
+    playTacticalSound('click');
+    alert(`${currentCombat.enemyName} eliminated with mathematical precision.`);
+    renderNode(currentCombat.victoryNode);
     return;
   }
 
-  // Enemy counter-attack
+  // Enemy Counter-Attack
   const eDmg = Math.floor(Math.random() * 10) + 12;
-  state.playerHp -= eDmg;
-  state.combatLog.push(`${state.enemyName} retaliates with kinetic force for ${eDmg} DMG.`);
+  currentCombat.playerHp -= eDmg;
+  document.getElementById("node-text").innerText = `${moveText}\n\n${currentCombat.enemyName} retaliates with severe kinetic trauma, inflicting ${eDmg} DMG!`;
 
-  if (state.playerHp <= 0) {
-    state.playerHp = 0;
-    alert("Critical failure: The Cannibal has fallen. Restarting scenario...");
+  if (currentCombat.playerHp <= 0) {
+    currentCombat.playerHp = 0;
+    alert("Critical failure: The Cannibal has fallen in combat. Recalibrating...");
     renderNode("start");
     return;
   }
 
-  renderCombat(victoryNode);
+  renderCombatScreen();
 }
 
-// Start Game
-renderNode("start");
+// Initialize Graphics and Story Engine
+window.onload = () => {
+  init3D();
+  renderNode("start");
+};
 </script>
 </body>
 </html>
